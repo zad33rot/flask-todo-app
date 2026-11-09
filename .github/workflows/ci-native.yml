@@ -1,0 +1,62 @@
+name: Flask CI (Native)
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Lint / Validate code
+      run: |
+        # Проверка синтаксиса Python-файлов (базовая валидация)
+        python -m compileall .
+
+    - name: Initialize SQLite database
+      run: |
+        # Приложение уже содержит файл todo.sqlite, но для чистоты
+        # можно удалить старый и создать новый через миграции или скрипт.
+        # Если в проекте есть manage.py с командой создания БД, раскомментируйте:
+        # python manage.py create_db
+        #
+        # Если нет — просто убедимся, что файл БД существует (он уже в репозитории).
+        ls -la todo.sqlite
+
+    - name: Start Flask server in background
+      run: |
+        # Запускаем сервер в фоне. Команда взята из README проекта.
+        # Порт по умолчанию в этом приложении — 7345.
+        nohup python manage.py runserver > flask.log 2>&1 &
+        echo "Flask server started in background. PID: $!"
+
+    - name: Smoke test Flask server
+      run: |
+        # Ждем несколько секунд, чтобы сервер успел подняться
+        sleep 5
+        # Выполняем запрос к главной странице. Флаг --fail заставит curl
+        # вернуть ошибку, если HTTP-статус будет 4xx или 5xx.
+        curl --fail -s -o /dev/null -w "HTTP status: %{http_code}\n" http://127.0.0.1:7345/
+        echo "Smoke test passed! Server responded successfully."
+
+    - name: Show server logs (if failed)
+      if: failure()
+      run: |
+        echo "--- Flask server logs ---"
+        cat flask.log
