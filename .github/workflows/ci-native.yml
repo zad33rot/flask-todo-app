@@ -26,32 +26,21 @@ jobs:
 
     - name: Lint / Validate code
       run: |
-        # Проверка синтаксиса Python-файлов (базовая валидация)
+        # Проверка синтаксиса Python-файлов
         python -m compileall .
 
     - name: Initialize SQLite database
       run: |
-        # Приложение уже содержит файл todo.sqlite, но для чистоты
-        # можно удалить старый и создать новый через миграции или скрипт.
-        # Если в проекте есть manage.py с командой создания БД, раскомментируйте:
-        # python manage.py create_db
-        #
-        # Если нет — просто убедимся, что файл БД существует (он уже в репозитории).
         ls -la todo.sqlite
 
     - name: Start Flask server in background
       run: |
-        # Запускаем сервер в фоне. Команда взята из README проекта.
-        # Порт по умолчанию в этом приложении — 7345.
         nohup python manage.py runserver > flask.log 2>&1 &
         echo "Flask server started in background. PID: $!"
 
     - name: Smoke test Flask server
       run: |
-        # Ждем несколько секунд, чтобы сервер успел подняться
         sleep 5
-        # Выполняем запрос к главной странице. Флаг --fail заставит curl
-        # вернуть ошибку, если HTTP-статус будет 4xx или 5xx.
         curl --fail -s -o /dev/null -w "HTTP status: %{http_code}\n" http://127.0.0.1:7345/
         echo "Smoke test passed! Server responded successfully."
 
